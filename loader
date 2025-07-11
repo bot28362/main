@@ -1,0 +1,362 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+   Name = "Σ⁠ - Solstice",
+   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   LoadingTitle = "Solstice",
+   LoadingSubtitle = "by MagmeEx",
+   ShowText = "Sols", -- for mobile users to unhide rayfield, change if you'd like
+   Theme = "Amethyst", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+
+   ToggleUIKeybind = "K", -- The keybind to toggle the UI visibility (string like "K" or Enum.KeyCode)
+
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil, -- Create a custom folder for your hub/game
+      FileName = "SolsConf"
+   },
+
+   Discord = {
+      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+   },
+
+   KeySystem = false, -- Set this to true to use our key system
+   KeySettings = {
+      Title = "Sols Key",
+      Subtitle = "Key System",
+      Note = "Key = bit.ly/40bstrD", -- Use this to tell the user how to get a key
+      FileName = "SolsKey", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
+      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+      Key = {"KEY-SOLS-74389042","Devkey79"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+   }
+})
+local Tab = Window:CreateTab("Main", 4483362458) -- Title, Image
+local Button = Tab:CreateButton({
+   Name = "Esp",
+   Callback = function()
+   local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+ESP = ESP or {
+    Enabled = true,
+    ShowBoxes = true,
+    ShowNames = true,
+    ShowTracers = true,
+    ShowHealth = true,
+    Color = nil,
+    HealthColorMode = "match",
+    HealthColorFunction = function(healthPercent)
+        if healthPercent > 0.7 then
+            return Color3.fromRGB(0, 255, 0)
+        elseif healthPercent > 0.3 then
+            return Color3.fromRGB(255, 165, 0)
+        else
+            return Color3.fromRGB(255, 0, 0)
+        end
+    end
+}
+
+local ESPObjects = {}
+
+local function newDrawing(type, props)
+    local obj = Drawing.new(type)
+    for k, v in pairs(props) do
+        obj[k] = v
+    end
+    return obj
+end
+
+local function createESPElements()
+    return {
+        Box = newDrawing("Square", {Visible = false, Thickness = 2, Filled = false, Color = Color3.new(1,1,1)}),
+        Name = newDrawing("Text", {Visible = false, Center = true, Outline = true, Size = 16, Font = 2, Color = Color3.new(1,1,1)}),
+        Tracer = newDrawing("Line", {Visible = false, Thickness = 1, Color = Color3.new(1,1,1)}),
+        HealthBar = newDrawing("Line", {Visible = false, Thickness = 4, Color = Color3.new(0,1,0)})
+    }
+end
+
+local function getRainbowColor(t)
+    local freq = 2
+    return Color3.new(
+        math.sin(freq * t) * 0.5 + 0.5,
+        math.sin(freq * t + 2) * 0.5 + 0.5,
+        math.sin(freq * t + 4) * 0.5 + 0.5
+    )
+end
+
+local function getBoxScreenPoints(cframe, size)
+    local half = size / 2
+    local points = {}
+    local visible = true
+    for x = -1,1,2 do
+        for y = -1,1,2 do
+            for z = -1,1,2 do
+                local corner = cframe * Vector3.new(half.X*x, half.Y*y, half.Z*z)
+                local screenPos, onScreen = Camera:WorldToViewportPoint(corner)
+                if not onScreen then visible = false end
+                table.insert(points, Vector2.new(screenPos.X, screenPos.Y))
+            end
+        end
+    end
+    return points, visible
+end
+
+local function hideAll(data)
+    data.Box.Visible = false
+    data.Name.Visible = false
+    data.Tracer.Visible = false
+    data.HealthBar.Visible = false
+end
+
+RunService.RenderStepped:Connect(function()
+    if not ESP.Enabled then
+        for _, data in pairs(ESPObjects) do
+            hideAll(data)
+        end
+        return
+    end
+
+    local now = tick()
+    local baseColor = ESP.Color or getRainbowColor(now)
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local character = player.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            if character and humanoid and humanoid.Health > 0 then
+                local success, cframe, size = pcall(character.GetBoundingBox, character)
+                if success and cframe and size then
+                    local points, visible = getBoxScreenPoints(cframe, size)
+                    if not visible then
+                        if ESPObjects[player] then
+                            hideAll(ESPObjects[player])
+                        end
+                    else
+                        local data = ESPObjects[player] or createESPElements()
+                        ESPObjects[player] = data
+
+                        local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+                        for _, pt in ipairs(points) do
+                            minX = math.min(minX, pt.X)
+                            minY = math.min(minY, pt.Y)
+                            maxX = math.max(maxX, pt.X)
+                            maxY = math.max(maxY, pt.Y)
+                        end
+
+                        local boxWidth, boxHeight = maxX - minX, maxY - minY
+                        local slimWidth = boxWidth * 0.7
+                        local slimX = minX + (boxWidth - slimWidth) / 2
+                        local healthRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+
+                        if ESP.ShowBoxes then
+                            data.Box.Visible = true
+                            data.Box.Position = Vector2.new(slimX, minY)
+                            data.Box.Size = Vector2.new(slimWidth, boxHeight)
+                            data.Box.Color = baseColor
+                        else
+                            data.Box.Visible = false
+                        end
+
+                        if ESP.ShowNames then
+                            data.Name.Visible = true
+                            data.Name.Text = player.Name
+                            data.Name.Position = Vector2.new(slimX + slimWidth/2, minY - 20)
+                            data.Name.Color = baseColor
+                        else
+                            data.Name.Visible = false
+                        end
+
+                        if ESP.ShowTracers then
+                            data.Tracer.Visible = true
+                            data.Tracer.From = screenCenter
+                            data.Tracer.To = Vector2.new(slimX + slimWidth/2, maxY)
+                            data.Tracer.Color = baseColor
+                        else
+                            data.Tracer.Visible = false
+                        end
+
+                        if ESP.ShowHealth then
+                            local barHeight = boxHeight * healthRatio
+                            data.HealthBar.Visible = true
+
+                            if ESP.HealthColorMode == "custom" and ESP.HealthColorFunction then
+                                data.HealthBar.Color = ESP.HealthColorFunction(healthRatio)
+                            else
+                                data.HealthBar.Color = baseColor
+                            end
+
+                            data.HealthBar.From = Vector2.new(slimX - 6, maxY)
+                            data.HealthBar.To = Vector2.new(slimX - 6, maxY - barHeight)
+                        else
+                            data.HealthBar.Visible = false
+                        end
+                    end
+                end
+            else
+                if ESPObjects[player] then
+                    hideAll(ESPObjects[player])
+                end
+            end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if ESPObjects[player] then
+        for _, obj in pairs(ESPObjects[player]) do
+            obj:Remove()
+        end
+        ESPObjects[player] = nil
+    end
+end)
+   end,
+})
+local Button = Tab:CreateButton({
+   Name = "Aimbot( PC )",
+   Callback = function()
+   local teamCheck = false
+local fov = 90
+local smoothing = 0.02
+local predictionFactor = 0.08  -- Adjust this factor to improve prediction accuracy
+local highlightEnabled = false  -- Variable to enable or disable target highlighting. Change to False if using an ESP script.
+local lockPart = "HumanoidRootPart"  -- Choose what part it locks onto. Ex. HumanoidRootPart or Head
+
+local Toggle = false  -- Enable or disable toggle mode
+local ToggleKey = Enum.KeyCode.E  -- Choose the key for toggling aimbot lock
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+local Players = game:GetService("Players")
+
+StarterGui:SetCore("SendNotification", {
+    Title = "Universal Aimbot";
+    Text = "made by bran-bon";
+    Duration = 5;
+})
+
+local FOVring = Drawing.new("Circle")
+FOVring.Visible = true
+FOVring.Thickness = 1
+FOVring.Radius = fov
+FOVring.Transparency = 0.8
+FOVring.Color = Color3.fromRGB(255, 128, 128)
+FOVring.Position = workspace.CurrentCamera.ViewportSize / 2
+
+local currentTarget = nil
+local aimbotEnabled = true
+local toggleState = false  -- Variable to keep track of toggle state
+local debounce = false  -- Debounce variable
+
+local function getClosest(cframe)
+    local ray = Ray.new(cframe.Position, cframe.LookVector).Unit
+    local target = nil
+    local mag = math.huge
+    local screenCenter = workspace.CurrentCamera.ViewportSize / 2
+
+    for i, v in pairs(Players:GetPlayers()) do
+        if v.Character and v.Character:FindFirstChild(lockPart) and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("HumanoidRootPart") and v ~= Players.LocalPlayer and (v.Team ~= Players.LocalPlayer.Team or (not teamCheck)) then
+            local screenPoint, onScreen = workspace.CurrentCamera:WorldToViewportPoint(v.Character[lockPart].Position)
+            local distanceFromCenter = (Vector2.new(screenPoint.X, screenPoint.Y) - screenCenter).Magnitude
+
+            if onScreen and distanceFromCenter <= fov then
+                local magBuf = (v.Character[lockPart].Position - ray:ClosestPoint(v.Character[lockPart].Position)).Magnitude
+
+                if magBuf < mag then
+                    mag = magBuf
+                    target = v
+                end
+            end
+        end
+    end
+
+    return target
+end
+
+local function updateFOVRing()
+    FOVring.Position = workspace.CurrentCamera.ViewportSize / 2
+end
+
+local function highlightTarget(target)
+    if highlightEnabled and target and target.Character then
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = target.Character
+        highlight.FillColor = Color3.fromRGB(255, 128, 128)
+        highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+        highlight.Parent = target.Character
+    end
+end
+
+local function removeHighlight(target)
+    if highlightEnabled and target and target.Character and target.Character:FindFirstChildOfClass("Highlight") then
+        target.Character:FindFirstChildOfClass("Highlight"):Destroy()
+    end
+end
+
+local function predictPosition(target)
+    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+        local velocity = target.Character.HumanoidRootPart.Velocity
+        local position = target.Character[lockPart].Position
+        local predictedPosition = position + (velocity * predictionFactor)
+        return predictedPosition
+    end
+    return nil
+end
+
+local function handleToggle()
+    if debounce then return end
+    debounce = true
+    toggleState = not toggleState
+    wait(0.3)  -- Debounce time to prevent multiple toggles
+    debounce = false
+end
+
+loop = RunService.RenderStepped:Connect(function()
+    if aimbotEnabled then
+        updateFOVRing()
+
+        local localPlayer = Players.LocalPlayer.Character
+        local cam = workspace.CurrentCamera
+        local screenCenter = workspace.CurrentCamera.ViewportSize / 2
+
+        if Toggle then
+            if UserInputService:IsKeyDown(ToggleKey) then
+                handleToggle()
+            end
+        else
+            toggleState = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
+        end
+
+        if toggleState then
+            if not currentTarget then
+                currentTarget = getClosest(cam.CFrame)
+                highlightTarget(currentTarget)  -- Highlight the new target if enabled
+            end
+
+            if currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild(lockPart) then
+                local predictedPosition = predictPosition(currentTarget)
+                if predictedPosition then
+                    workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(CFrame.new(cam.CFrame.Position, predictedPosition), smoothing)
+                end
+                FOVring.Color = Color3.fromRGB(0, 255, 0)  -- Change FOV ring color to green when locked onto a target
+            else
+                FOVring.Color = Color3.fromRGB(255, 128, 128)  -- Revert FOV ring color to original when not locked onto a target
+            end
+        else
+            if currentTarget and highlightEnabled then
+                removeHighlight(currentTarget)  -- Remove highlight from the old target
+            end
+            currentTarget = nil
+            FOVring.Color = Color3.fromRGB(255, 128, 128)  -- Revert FOV ring color to original when not locked onto a target
+        end
+    end
+end)
+end})
