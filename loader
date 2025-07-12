@@ -872,4 +872,4 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 end})
-local Label = Tab:CreateLabel("Press E for start aimbot", "circle-question-mark")
+local Label = Tab:CreateLabel("Press E for start aimbot", "send")
