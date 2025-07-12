@@ -871,3 +871,4 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
         Toggle.BackgroundColor3 = Main.Visible and Color3.fromRGB(80, 180, 80) or Color3.fromRGB(60, 60, 60)
     end
 end)
+end})
