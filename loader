@@ -253,7 +253,7 @@ FOVring.Position = workspace.CurrentCamera.ViewportSize / 2
 
 local currentTarget = nil
 local aimbotEnabled = true
-local toggleState = false  -- Variable to keep track of toggle state
+local toggleState = true
 local debounce = false  -- Debounce variable
 
 local function getClosest(cframe)
